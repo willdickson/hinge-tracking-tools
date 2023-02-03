@@ -1,0 +1,9 @@
+*~
+*.swp
+*cache.lib
+*.pyc
+*.egg-info
+*.egg
+*.tar.gz
+*.FCStd1
+examples/movies

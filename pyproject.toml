@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "hinge-tracking-tools"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "hinge_tracking_tools"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+scipy = "^1.10.0"
+numpy = "^1.24.1"
+opencv-python = "^4.7.0.68"
+scikit-learn = "^1.2.1"
+matplotlib = "^3.6.3"
+h5py = "^3.8.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
