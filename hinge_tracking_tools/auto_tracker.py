@@ -6,15 +6,12 @@ import numpy as np
 
 class AutoTracker:
 
-    def __init__(self, input_file, output_file, track_config, save_data=False):
+    def __init__(self, input_file, output_file, track_config, options={}, save_data=False):
         self.input_file = input_file
         self.output_file = output_file
         self.track_config = track_config
         self.save_data = save_data
-        self.show_roi_images = False
-        self.show_roi_rect = False
-        self.show_tracking = True
-        self.step_through = False 
+        self.options = options
 
     def run(self):
         tracking_data = {name : [] for name in self.track_config}
@@ -32,7 +29,8 @@ class AutoTracker:
                 c0, c1 = track_info['roi']['col']
                 r0, r1 = track_info['roi']['row']
                 roi = frame[r0:r1,c0:c1]
-                roi = cv2.GaussianBlur(roi,(3,3),0)
+                if track_info.get('gaussianBlur', False):
+                    roi = cv2.GaussianBlur(roi,(3,3),0)
                 min_val = float(roi.min())
                 max_val = float(roi.max())
                 threshold = int(min_val + track_info['threshold']*(max_val - min_val))
@@ -52,6 +50,12 @@ class AutoTracker:
                     mask_min = np.logical_and(indx == xmin, mask_thresh)
                     roi_objx = indx[mask_min].mean()
                     roi_objy = indy[mask_min].mean()
+                elif track_info['track_type'] == 'bottom':
+                    ymax = indy[mask_thresh].max()
+                    mask_max = np.logical_and(indy == ymax, mask_thresh)
+                    roi_objx = int(indx[mask_max].mean())
+                    roi_objy = int(indy[mask_max].mean())
+
 
                 objx = roi_objx + c0
                 objy = roi_objy + r0
@@ -60,20 +64,21 @@ class AutoTracker:
                 color = track_info['color']
                 thickness = track_info['thickness']
 
-                if self.show_roi_rect:
+
+                if self.options.get('show_roi_rect', False):
                     cv2.rectangle(frame_bgr, (c0,r0), (c1,r1), color, thickness=thickness) 
                     cv2.circle(roi, (int(roi_objx), int(roi_objy)), 1, (255,0,0), thickness=1)
                 
-                if self.show_tracking:
+                if self.options.get('show_tracking', False):
                     cv2.circle(frame_bgr, (int(objx), int(objy)), 2, color, thickness=thickness)
 
-                if self.show_roi_images:
+                if self.options.get('show_roi_images', False):
                     cv2.imshow(f'roi {obj_name}', roi)
                     cv2.imshow(f'roi thresh {obj_name}', roi_thresh)
 
             cv2.imshow('frame_bgr', frame_bgr)
 
-            if self.step_through:
+            if self.options.get('step_through', False):
                 key = cv2.waitKey(0)
                 if key == ord('q'):
                     break
@@ -88,7 +93,7 @@ class AutoTracker:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, frame_pos)
                     print('bck')
             else:
-                if cv2.waitKey(20) == ord('q'):
+                if cv2.waitKey(self.options.get('wait_dt',1)) == ord('q'):
                     break
 
         if self.save_data:
@@ -96,5 +101,10 @@ class AutoTracker:
             for name, xy in tracking_data.items():
                 h5file.create_dataset(name, data=np.array(xy))
             h5file.close()
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+        
 
 

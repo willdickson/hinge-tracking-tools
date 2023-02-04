@@ -96,6 +96,7 @@ class AssistedTracker:
             return
         with open(filename, 'wb') as f:
             pickle.dump(self.track_data, f)
+        print(f'saved data to {self.output_file}')
 
     def on_mouse_event(self, event, x, y, flags, param):
         match event:
@@ -191,6 +192,8 @@ class AssistedTracker:
         if self.track_data:
             last_pos = self.max_tracked_frame()
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, last_pos)
+        else:
+            last_pos = -1
 
         cv2.namedWindow(self.window_name)
         cv2.setMouseCallback(self.window_name, self.on_mouse_event)
@@ -346,7 +349,6 @@ class AssistedTracker:
     def save_data(self):
         self.no_step()
         self.save_tracking_data(self.output_file)
-        print(f'saved data to {self.output_file}')
 
     def add_points(self):
         self.no_step()
@@ -412,7 +414,6 @@ class AssistedTracker:
                 )
         backup_file = backup_path.as_posix()
         self.save_tracking_data(backup_file)
-        print(f'data backed up to {backup_file}')
 
     def goto_first(self):
         min_frame = self.min_tracked_frame()
@@ -493,9 +494,10 @@ class AssistedTracker:
 
 def get_missing_ind(ind):
     ind_missing = []
-    for n in range(min(ind), max(ind)):
-        if not n in ind:
-            ind_missing.append(n)
+    if ind:
+        for n in range(min(ind), max(ind)):
+            if not n in ind:
+                ind_missing.append(n)
     return ind_missing
 
 
