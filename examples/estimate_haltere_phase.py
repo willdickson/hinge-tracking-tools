@@ -29,9 +29,6 @@ def load_scutum_data(filename, filt_win=21, filt_ord=3):
     return d12_filt, d13_filt
 
 
-def load_haltere_data(filename):
-    return np.load(haltere_angle_filename)
-
 def find_period(t,x,guess=1/200.0, disp=False):
     dt = t[1] - t[0]
     xcorr = sig.correlate(x,x)
@@ -87,14 +84,14 @@ if __name__ == '__main__':
     t_lag = dt*lag
     deg_lag = 360.0*t_lag/period
 
-    phase_lag_ind = xcorr.argmax()
-    phase_lag_deg = deg_lag[phase_lag_ind]
-    phase_lag_xcorr = xcorr[phase_lag_ind]
-
     mask = np.logical_and(t_lag > -0.25*period, t_lag < 0.25*period)
     xcorr = xcorr[mask]
     t_lag = t_lag[mask]
     deg_lag = deg_lag[mask]
+
+    phase_lag_ind = xcorr.argmax()
+    phase_lag_deg = deg_lag[phase_lag_ind]
+    phase_lag_xcorr = xcorr[phase_lag_ind]
 
     print()
     print(f'period:    {period:0.5f} (s)')

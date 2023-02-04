@@ -14,6 +14,7 @@ track_config = {
             'thickness' : 2,
             'threshold' : 0.15,
             'track_type' : 'top',
+            'gaussianBlur' : True,
             },
         'obj2' : {
             'roi' : {
@@ -24,6 +25,7 @@ track_config = {
             'thickness' : 2,
             'threshold' : 0.20,
             'track_type' : 'left',
+            'gaussianBlur' : True,
             },
         'obj3' : {
             'roi' : {
@@ -34,8 +36,16 @@ track_config = {
             'thickness' : 2,
             'threshold' : 0.20,
             'track_type' : 'left',
+            'gaussianBlur' : True,
             },
         }
 
-tracker = AutoTracker(input_file, output_file, track_config, save_data=save_data)
+options = {
+        'show_roi_rect': False,
+        'show_roi_images': False,
+        'show_tracking': True,
+        'wait_dt': 1,
+        }
+
+tracker = AutoTracker(input_file, output_file, track_config, options=options, save_data=save_data)
 tracker.run()
