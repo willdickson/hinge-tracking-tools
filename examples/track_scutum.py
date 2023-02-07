@@ -44,7 +44,7 @@ options = {
         'show_roi_rect': False,
         'show_roi_images': False,
         'show_tracking': True,
-        'wait_dt': 1,
+        'wait_dt': 20,
         }
 
 tracker = AutoTracker(input_file, output_file, track_config, options=options, save_data=save_data)

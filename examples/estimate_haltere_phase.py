@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as sig
 
+from hinge_tracking_tools import find_period
+
 def load_scutum_data(filename, filt_win=21, filt_ord=3):
     data = h5py.File(filename, 'r')
     obj1 = data['obj1'][...]
@@ -27,36 +29,6 @@ def load_scutum_data(filename, filt_win=21, filt_ord=3):
     d12_filt = sig.savgol_filter(d12,filt_win,filt_ord)
     d13_filt = sig.savgol_filter(d13,filt_win,filt_ord)
     return d12_filt, d13_filt
-
-
-def find_period(t,x,guess=1/200.0, disp=False):
-    dt = t[1] - t[0]
-    xcorr = sig.correlate(x,x)
-    lag = sig.correlation_lags(len(x), len(x))
-    t_lag = dt*lag
-
-    peaks, _  = sig.find_peaks(xcorr)
-    peaks = peaks[1:-1]
-
-    t_peaks = t_lag[peaks]
-    xcorr_peaks = xcorr[peaks]
-
-    dt_peaks = t_peaks[1:] - t_peaks[:-1]
-    period = dt_peaks.mean()
-
-    if disp:
-        fig, ax = plt.subplots(1,1)
-        ax.plot(t_lag,xcorr)
-        ax.plot(t_peaks, xcorr_peaks, 'or')
-        ax.set_xlabel('lag (sec)')
-        ax.set_ylabel('xcorr')
-        ax.grid(True)
-        plt.show()
-
-    return period
-
-
-
 
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':

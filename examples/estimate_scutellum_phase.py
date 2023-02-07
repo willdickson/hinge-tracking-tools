@@ -3,6 +3,9 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as sig
+from hinge_tracking_tools import find_period 
+from hinge_tracking_tools import get_windowed_phase_lag 
+from hinge_tracking_tools import  normalize
 
 def load_scutum_data(filename, param):
     data = h5py.File(filename, 'r')
@@ -21,25 +24,28 @@ def load_scutum_data(filename, param):
     
     d12 = np.sqrt((x1-x2)**2 + (y1-y2)**2)
     d13 = np.sqrt((x1-x3)**2 + (y1-y3)**2)
-    d12 = d12 - np.median(d12)
-    d13 = d13 - np.median(d13)
+    d12 = d12 - np.mean(d12)
+    d13 = d13 - np.mean(d13)
     
     filt_win = param['savgol_win']
     filt_ord = param['savgol_ord']
     d12_filt = sig.savgol_filter(d12,filt_win,filt_ord)
     d13_filt = sig.savgol_filter(d13,filt_win,filt_ord)
+
+    d12_filt = d12_filt - np.mean(d12_filt)
+    d13_filt = d13_filt - np.mean(d13_filt)
     return d12_filt, d13_filt
 
 
 def load_scutellum_data(filename, param):
     data = h5py.File(filename, 'r')
-    obj1 = data['obj1'][...]
-    x = obj1[:,0]
-    y = obj1[:,1]
-    x = x - np.median(x)
-    y = y - np.median(y)
+    obj = data['obj2'][...]
+    x = obj[:,0]
+    y = obj[:,1]
+    x = x - np.mean(x)
+    y = y - np.mean(y)
 
-    # Find frequencies
+    # Find frequencies and get filtered data
     f, psd = sig.welch(y, fs, nperseg=param['psd_nperseg'])
     peaks, _ = sig.find_peaks(psd, height=param['psd_peaks_thresh'])
     f_prob = f[peaks[0]] # low frequency wobble
@@ -47,86 +53,23 @@ def load_scutellum_data(filename, param):
     f_filt = f_prob + param['hp_cutoff_frac']*(f_flap - f_prob)
     sos = sig.butter(param['hp_order'], f_filt, btype='hp', fs=fs, output='sos')
     y_hp = sig.sosfiltfilt(sos,y)
-    y_hp_sg = sig.savgol_filter(y_hp, 21,3)
-    return y, y_hp, y_hp_sg
+    y_hp_sg = sig.savgol_filter(y_hp, param['savgol_win'], param['savgol_ord'])
+
+    # Load referece object and computer differential data
+    ref = data['obj3'][...]
+    x_ref = ref[:,0]
+    y_ref = ref[:,1]
+    x_diff = x - x_ref
+    y_diff = y - y_ref
+    x_diff = x_diff - np.mean(x_diff)
+    y_diff = y_diff - np.mean(y_diff)
+
+    y_diff_filt = sig.savgol_filter(y_diff, param['savgol_win'], param['savgol_ord'])
+    y_diff_filt = y_diff_filt - np.mean(y_diff_filt)
+
+    return y, y_hp, y_hp_sg, y_diff, y_diff_filt
 
 
-def find_period(t,x,guess=1/200.0, disp=False):
-    dt = t[1] - t[0]
-    xcorr = sig.correlate(x,x)
-    lag = sig.correlation_lags(len(x), len(x))
-    t_lag = dt*lag
-
-    peaks, _  = sig.find_peaks(xcorr)
-    peaks = peaks[1:-1]
-
-    t_peaks = t_lag[peaks]
-    xcorr_peaks = xcorr[peaks]
-
-    dt_peaks = t_peaks[1:] - t_peaks[:-1]
-    period = dt_peaks.mean()
-
-    if disp:
-        fig, ax = plt.subplots(1,1)
-        ax.plot(t_lag,xcorr)
-        ax.plot(t_peaks, xcorr_peaks, 'or')
-        ax.set_xlabel('lag (sec)')
-        ax.set_ylabel('xcorr')
-        ax.grid(True)
-        plt.show()
-
-    return period
-
-
-def normalize(x):
-    delta = x.max() - x.min()
-    return x/(0.5*delta)
-
-
-def get_windowed_phase_lag(t,x,y,win,dt,period,disp=False):
-    num = len(x)
-    t_list = []
-    phase_lag_list = []
-    step = 2*int(period/dt)
-    if disp:
-        fig, ax = plt.subplots(1,1)
-    for i in range(1,num-win,step):
-        # Cross correlate signals to find phase lag
-        twin = t[i:i+win]
-        xwin = x[i:i+win]
-        ywin = y[i:i+win]
-        xcorr = sig.correlate(xwin, ywin)
-        lag = sig.correlation_lags(len(xwin), len(ywin))
-        t_lag = dt*lag
-        deg_lag = 360.0*t_lag/period
-
-        # Truncate cross correlation to less than one period
-        mask = np.logical_and(t_lag > -0.5*period, t_lag < 0.5*period)
-        xcorr = xcorr[mask]
-        t_lag = t_lag[mask]
-        deg_lag = deg_lag[mask]
-
-
-        # Find peak in cross correlation to get phase lead/lag
-        phase_lag_ind = xcorr.argmax()
-        phase_lag_deg = deg_lag[phase_lag_ind]
-        phase_lag_xcorr = xcorr[phase_lag_ind]
-
-        if disp:
-            ax.plot(deg_lag, xcorr)
-            ax.plot([phase_lag_deg],[phase_lag_xcorr], 'or')
-            ax.set_xlabel('lag (deg)')
-            ax.set_ylabel('xcorr')
-            ax.grid(True)
-
-        phase_lag_list.append(phase_lag_deg)
-        t_list.append(twin.mean())
-        
-    if disp:
-        plt.show()
-    return np.array(t_list), np.array(phase_lag_list)
-
-# -----------------------------------------------------------------------------
 if __name__ == '__main__':
 
     fs = 10000.0
@@ -148,22 +91,20 @@ if __name__ == '__main__':
             'hp_cutoff_frac': 0.6,
             'hp_order': 10,
             'savgol_win': 21,
-            'savgol_org': 3,
+            'savgol_ord': 3,
             }
+
     scutellum_data = load_scutellum_data(scutellum_data_filename, scutellum_proc_param)
-    scutellum_pos, scutellum_pos_hp, scutellum_pos_hp_sg = scutellum_data
+    pos, pos_hp, pos_hp_sg, pos_diff, pos_diff_filt = scutellum_data
+    scutellum_pos = pos_diff_filt 
 
     # Remove points form start and finish to remove end effects
     scutum_pos = scutum_pos[n_rm:-n_rm]
     scutellum_pos = scutellum_pos[n_rm:-n_rm]
-    scutellum_pos_hp = scutellum_pos_hp[n_rm:-n_rm]
-    scutellum_pos_hp_sg = scutellum_pos_hp_sg[n_rm:-n_rm]
 
     # normalize to range -1, 1
     scutum_pos = normalize(scutum_pos)
     scutellum_pos = normalize(scutellum_pos)
-    scutellum_pos_hp = normalize(scutellum_pos_hp)
-    scutellum_pos_hp_sg = normalize(scutellum_pos_hp_sg)
 
     # Get frame #s and time points
     frame = np.arange(len(scutum_pos)) + n_rm
@@ -173,7 +114,7 @@ if __name__ == '__main__':
     wb_freq = 1.0/wb_period
 
     # Cross correlate signals to find phase lag
-    xcorr = sig.correlate(scutum_pos, scutellum_pos_hp_sg)
+    xcorr = sig.correlate(scutum_pos, scutellum_pos)
     lag = sig.correlation_lags(len(scutum_pos), len(scutellum_pos))
     t_lag = dt*lag
     deg_lag = 360.0*t_lag/wb_period
@@ -199,7 +140,7 @@ if __name__ == '__main__':
     t_varying, phase_varying = get_windowed_phase_lag(
             t,
             scutum_pos, 
-            scutellum_pos_hp, 
+            scutellum_pos, 
             xcorr_win, 
             dt, 
             wb_period,
@@ -217,7 +158,7 @@ if __name__ == '__main__':
     # Plot raw signals
     fig, ax = plt.subplots(2,1,sharex=True)
     scutum_line, = ax[0].plot(t, scutum_pos, 'b')
-    scutellum_line, = ax[0].plot(t, scutellum_pos_hp_sg, 'g')
+    scutellum_line, = ax[0].plot(t, scutellum_pos, 'g')
     ax[0].set_ylabel('position (normalized)')
     ax[0].grid(True)
     ax[0].legend((scutum_line, scutellum_line), ('scutum', 'scutellum'), loc='upper right')

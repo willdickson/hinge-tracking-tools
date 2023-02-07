@@ -9,10 +9,12 @@ fs = 10000.0
 dt = 1.0/fs
 psd_nperseg = 5*1024
 psd_peaks_thresh = 1.0e-1
-obj_name = 'obj1'
+obj_name_list = ['obj1', 'obj2']
+
+for obj_name 
 
 data = h5py.File(data_file, 'r')
-obj = data[obj_name][...]
+obj = data['obj1'][...]
 
 x = obj[:,0]
 y = obj[:,1]
