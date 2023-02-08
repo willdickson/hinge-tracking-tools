@@ -2,7 +2,7 @@ from hinge_tracking_tools import AutoTracker
 
 input_file = 'movies/camera_1.avi'
 output_file = 'data/scutum_tracking_data.hdf5'
-save_data = False
+save_data = True 
 
 track_config = { 
         'obj1' : {
@@ -44,7 +44,7 @@ options = {
         'show_roi_rect': False,
         'show_roi_images': False,
         'show_tracking': True,
-        'wait_dt': 20,
+        'wait_dt': 1,
         }
 
 tracker = AutoTracker(input_file, output_file, track_config, options=options, save_data=save_data)

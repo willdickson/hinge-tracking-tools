@@ -42,8 +42,6 @@ period = find_period(t, diff_13_filt, guess=1/200.0, disp=False)
 print(f'period: {period}')
 print(f'frequency: {1.0/period}')
 
-win = 5*int(fs*period)
-period_data_t, period_data_x = period_list = get_windowed_period(t, diff_13_filt, win, dt, step=10, disp=False)
 
 
 if 0:

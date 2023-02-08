@@ -3,7 +3,10 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as sig
+import scipy.interpolate as interp
+import scipy.stats as stats
 from hinge_tracking_tools import find_period 
+from hinge_tracking_tools import get_windowed_period
 from hinge_tracking_tools import get_windowed_phase_lag 
 from hinge_tracking_tools import  normalize
 
@@ -69,7 +72,29 @@ def load_scutellum_data(filename, param):
 
     return y, y_hp, y_hp_sg, y_diff, y_diff_filt
 
+    
+def find_zero_crossings(t,x,num_pts=None):
+    if num_pts is None:
+        num_pts = 100*len(x)
+    t_interp = np.linspace(t.min(), t.max(), num_pts)
+    x_interp = interp.interp1d(t,x)(t_interp)
+    y = -np.absolute(x_interp)
+    ymin = y.min()
+    ymax = y.max()
+    height = 0.9*(ymax - ymin) + ymin
+    peaks, _ = sig.find_peaks(y, height=height)
+    return t_interp[peaks]
 
+def find_periods(t,x,num_pts=None,win=15):
+    t_cross = find_zero_crossings(t,x,num_pts=num_pts)
+    period = (1.0/win)*(t_cross[2*win:] - t_cross[:-2*win])
+    t_mid = 0.5*(t_cross[2*win:] + t_cross[:-2*win]) 
+    return t_mid, period
+
+
+
+
+# ---------------------------------------------------------------------------------------
 if __name__ == '__main__':
 
     fs = 10000.0
@@ -137,7 +162,7 @@ if __name__ == '__main__':
     print()
 
     xcorr_win = int(15*wb_period/dt)
-    t_varying, phase_varying = get_windowed_phase_lag(
+    t_win_phase, win_phase = get_windowed_phase_lag(
             t,
             scutum_pos, 
             scutellum_pos, 
@@ -147,6 +172,34 @@ if __name__ == '__main__':
             disp=False
             )
 
+    t_win_period, win_period = get_windowed_period(
+            t, 
+            scutum_pos, 
+            xcorr_win, 
+            dt, 
+            wb_period,
+            disp=False
+            )
+    t_win_freq = t_win_period
+    win_freq = 1.0/win_period
+
+    phase_func = interp.interp1d(t_win_phase, win_phase)
+    freq_func = interp.interp1d(t_win_freq, win_freq)
+
+    t0 = max(t_win_freq[0], t_win_phase[0])
+    t1 = min(t_win_freq[-1], t_win_phase[-1])
+    t_interp = np.linspace(t0,t1,100)
+    phase_interp = phase_func(t_interp)
+    freq_interp = freq_func(t_interp)
+
+    fit = stats.linregress(freq_interp, phase_interp, alternative='two-sided')
+    freq_fit = np.linspace(freq_interp.min(), freq_interp.max(), 200)
+    phase_fit = fit.slope*freq_fit + fit.intercept
+
+    t_scutum_periods, val_scutum_periods = find_periods(t,scutum_pos)
+    t_scutellum_periods, val_scutellum_periods = find_periods(t,scutellum_pos)
+
+
     fig, ax = plt.subplots(1,1)
     ax.plot(deg_lag, xcorr,'b')
     ax.plot([phase_lag_deg], [phase_lag_xcorr], 'or')
@@ -155,20 +208,40 @@ if __name__ == '__main__':
     ax.set_title('overall phase lag')
     ax.grid(True)
 
-    # Plot raw signals
-    fig, ax = plt.subplots(2,1,sharex=True)
+    # Plot raw signals and varying phase lag
+    fig, ax = plt.subplots(3,1,sharex=True)
     scutum_line, = ax[0].plot(t, scutum_pos, 'b')
     scutellum_line, = ax[0].plot(t, scutellum_pos, 'g')
     ax[0].set_ylabel('position (normalized)')
     ax[0].grid(True)
     ax[0].legend((scutum_line, scutellum_line), ('scutum', 'scutellum'), loc='upper right')
 
-    ax[1].plot(t_varying, phase_varying, 'b')
+    ax[1].plot(t_win_phase, win_phase, 'ob')
+    #ax[1].plot(t_interp, phase_interp, 'g')
     ax[1].set_xlabel('index')
     ax[1].set_ylabel('phase lag (deg)')
     ax[1].grid(True)
-    ax[1].set_ylim(1.1*phase_varying.min(),0)
-    ax[1].set_xlabel('time (sec)')
+    ax[1].set_ylim(1.1*win_phase.min(),0)
+
+    ax[2].plot(t_win_freq, win_freq, 'ob')
+    ax[2].plot(t_scutum_periods, 1.0/val_scutum_periods,'r')
+    ax[2].plot(t_scutellum_periods, 1.0/val_scutellum_periods,'g')
+    #ax[2].plot(t_interp, freq_interp, 'g')
+    ax[2].set_xlabel('index')
+    ax[2].set_ylabel('frequency (deg)')
+    ax[2].grid(True)
+    fmin = win_freq.min()
+    fmax = win_freq.max()
+    fadj = 0.05*(fmax - fmin)
+    ax[2].set_ylim(fmin - fadj, fmax + fadj)
+    ax[2].set_xlabel('time (sec)')
+
+    fig, ax = plt.subplots(1,1)
+    ax.plot(freq_interp, phase_interp, 'ob')
+    ax.plot(freq_fit, phase_fit, 'r')
+    ax.set_xlabel('freq (Hz)')
+    ax.set_ylabel('phase lag (deg)')
+    ax.grid(True)
     plt.show()
 
 

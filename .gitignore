@@ -7,3 +7,4 @@
 *.tar.gz
 *.FCStd1
 examples/movies
+examples/movies_*

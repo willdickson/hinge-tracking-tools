@@ -38,13 +38,35 @@ track_config = {
             'track_type' : 'bottom',
             'gaussianBlur': True,
             },
+        'obj4' : {
+            'roi' : {
+                'col' : [100, 130],
+                'row' : [435, 440],
+                },
+            'color' : (255,255,0),
+            'thickness' : 2,
+            'threshold' : 0.5,
+            'track_type' : 'right',
+            'gaussianBlur': True,
+            },
+        'obj5' : {
+            'roi' : {
+                'col' : [470, 500],
+                'row' : [485, 490],
+                },
+            'color' : (255,0,255),
+            'thickness' : 2,
+            'threshold' : 0.5,
+            'track_type' : 'left',
+            'gaussianBlur': True,
+            },
         }
 
 options = {
         'show_roi_rect': True,
         'show_roi_images': True,
         'show_tracking': True,
-        'wait_dt': 2,
+        'wait_dt': 20,
         'step_through': False,
         }
 

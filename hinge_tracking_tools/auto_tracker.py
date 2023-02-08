@@ -45,17 +45,21 @@ class AutoTracker:
                     mask_min = np.logical_and(indy == ymin, mask_thresh)
                     roi_objx = int(indx[mask_min].mean())
                     roi_objy = int(indy[mask_min].mean())
-                elif track_info['track_type'] == 'left':
-                    xmin = indx[mask_thresh].min()
-                    mask_min = np.logical_and(indx == xmin, mask_thresh)
-                    roi_objx = indx[mask_min].mean()
-                    roi_objy = indy[mask_min].mean()
                 elif track_info['track_type'] == 'bottom':
                     ymax = indy[mask_thresh].max()
                     mask_max = np.logical_and(indy == ymax, mask_thresh)
                     roi_objx = int(indx[mask_max].mean())
                     roi_objy = int(indy[mask_max].mean())
-
+                elif track_info['track_type'] == 'left':
+                    xmin = indx[mask_thresh].min()
+                    mask_min = np.logical_and(indx == xmin, mask_thresh)
+                    roi_objx = indx[mask_min].mean()
+                    roi_objy = indy[mask_min].mean()
+                elif track_info['track_type'] == 'right':
+                    xmax = indx[mask_thresh].max()
+                    mask_max = np.logical_and(indx == xmax, mask_thresh)
+                    roi_objx = indx[mask_max].mean()
+                    roi_objy = indy[mask_max].mean()
 
                 objx = roi_objx + c0
                 objy = roi_objy + r0
@@ -63,7 +67,6 @@ class AutoTracker:
 
                 color = track_info['color']
                 thickness = track_info['thickness']
-
 
                 if self.options.get('show_roi_rect', False):
                     cv2.rectangle(frame_bgr, (c0,r0), (c1,r1), color, thickness=thickness) 
