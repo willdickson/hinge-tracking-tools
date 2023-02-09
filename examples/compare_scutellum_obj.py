@@ -11,8 +11,6 @@ psd_nperseg = 5*1024
 psd_peaks_thresh = 1.0e-1
 obj_name_list = ['obj1', 'obj2']
 
-for obj_name 
-
 data = h5py.File(data_file, 'r')
 obj = data['obj1'][...]
 
